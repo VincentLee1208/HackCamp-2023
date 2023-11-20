@@ -1,8 +1,8 @@
 // routes/authRoutes.js
 const express = require('express');
-const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const router = express.Router();
+
 
 router.post('/login', async (req, res) => {
   try {
@@ -14,15 +14,16 @@ router.post('/login', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    
+    console.log('Entered email:', email);
+    console.log('Entered password:', password);
+    console.log('Stored password:', user.password);
 
-    if (!passwordMatch) {
+    if(password !== user.password) {
       return res.status(401).json({ error: 'Incorrect password' });
     }
 
-    // If the password matches, you can generate a token and send it to the client
-    // For simplicity, we're just sending a success message here
-    res.json({ success: true, user });
+    return res.json({ success: true, user });
 
   } catch (error) {
     console.error('Login error:', error);
@@ -32,37 +33,53 @@ router.post('/login', async (req, res) => {
 
 // Route to handle user registration
 router.post('/signup', async (req, res) => {
-    try {
-      const { email, password, name, gender, healthCardNumber } = req.body;
-  
-      // Check if the email is already in use
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ error: 'Email is already in use' });
-      }
-  
-      // Hash the password
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      // Create a new user
-      const newUser = new User({
-        email,
-        password: hashedPassword,
-        name,
-        gender,
-        healthCardNumber,
-      });
-  
-      // Save the user to the database
-      await newUser.save();
-  
-      // Return a success response
-      res.json({ success: true });
-  
-    } catch (error) {
-      console.error('Signup error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  try {
+    const { email, password, name, healthCardNumber } = req.body;
+
+    // Check if the email is already in use
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email is already in use' });
     }
-  });
+
+
+    // Create a new user
+    const newUser = new User({
+      email,
+      password,
+      name,
+      healthCardNumber,
+    });
+
+    // Save the user to the database
+    await newUser.save();
+
+    // Return a success response
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Signup error:', json.stringify(error));
+    res.status(500).json({ error });
+  }
+});
+
+router.post('/add-medication', async (req, res) => {
+  const { userId, medication } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await user.addMedication(medication);
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Error adding medication:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 module.exports = router;
